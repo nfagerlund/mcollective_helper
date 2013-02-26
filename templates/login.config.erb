@@ -1,12 +1,12 @@
 MCollectivePropertiesLogin {
     org.apache.activemq.jaas.PropertiesLoginModule required
         debug=false
-        org.apache.activemq.jaas.properties.user="mcollective_password_users.properties"
-        org.apache.activemq.jaas.properties.group="mcollective_groups.properties";
+        org.apache.activemq.jaas.properties.user="mcollective-password-users.properties"
+        org.apache.activemq.jaas.properties.group="mcollective-groups.properties";
 };
 MCollectiveCertLogin {
     org.apache.activemq.jaas.TextFileCertificateLoginModule required
         debug=false
-        org.apache.activemq.jaas.textfiledn.user="mcollective_certificate_users.properties"
-        org.apache.activemq.jaas.textfiledn.group="mcollective_groups.properties";
+        org.apache.activemq.jaas.textfiledn.user="mcollective-certificate-users.properties"
+        org.apache.activemq.jaas.textfiledn.group="mcollective-groups.properties";
 };

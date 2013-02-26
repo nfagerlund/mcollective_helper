@@ -83,32 +83,32 @@ class mcollective_helper::activemq::broker (
   }
 
   # Uses $users parameter.
-  file {"${activemq_confdir}/mcollective_groups.properties":
+  file {"${activemq_confdir}/mcollective-groups.properties":
     ensure  => file,
     mode    => 0600,
     owner   => $activemq_user,
     group   => $activemq_user,
-    content => template("${module_name}/mcollective_groups.properties.erb"),
+    content => template("${module_name}/mcollective-groups.properties.erb"),
   }
 
   if $authentication == properties {
     # Uses $users parameter.
-    file {"${activemq_confdir}/mcollective_password_users.properties":
+    file {"${activemq_confdir}/mcollective-password-users.properties":
       ensure  => file,
       mode    => 0600, # This file contains secret credentials if you are using the "properties" authentication method.
       owner   => $activemq_user,
       group   => $activemq_user,
-      content => template("${module_name}/mcollective_password_users.properties.erb"),
+      content => template("${module_name}/mcollective-password-users.properties.erb"),
     }
   }
   if $authentication == certificate {
     # Uses $users parameter.
-    file {"${activemq_confdir}/mcollective_certificate_users.properties":
+    file {"${activemq_confdir}/mcollective-certificate-users.properties":
       ensure  => file,
       mode    => 0600,
       owner   => $activemq_user,
       group   => $activemq_user,
-      content => template("${module_name}/mcollective_certificate_users.properties.erb"),
+      content => template("${module_name}/mcollective-certificate-users.properties.erb"),
     }
   }
 
