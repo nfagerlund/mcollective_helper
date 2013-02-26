@@ -147,13 +147,13 @@
           <%- end -%>
 
           <!--
-            Configure which users are allowed to read and write where. We expect:
+            Configure which users are allowed to read and write where. Permissions
+            are organized by group. The following groups are available:
 
-            * The MCollective server user(s) belong to the group "servers"
-            * Admin users who may issue MCollective commands belong to the group "admins"
-            * All admin users are equal on the middleware level, and additional restrictions
-              on who may issue commands to which machines should be handled by
-              MCollective's security plugin and the optional actionpolicy plugin.
+            * admins -- can issue MCollective commands to ALL servers.
+            * [COLLECTIVE]-admins -- can issue MCollective commands to servers in COLLECTIVE.
+            * servers -- can respond to commands from ANY collective.
+            * [COLLECTIVE]-servers -- can respond to commands from COLLECTIVE.
           -->
           <authorizationPlugin>
             <map>
@@ -171,12 +171,12 @@
                     * Servers may send replies.
                   -->
                   <%- @collectives.each do |collective| -%>
-                  <authorizationEntry queue="<%= collective %>.>" write="admins" read="admins" admin="admins" />
-                  <authorizationEntry topic="<%= collective %>.>" write="admins" read="admins" admin="admins" />
-                  <authorizationEntry queue="<%= collective %>.nodes.>" read="servers" admin="servers" />
-                  <authorizationEntry queue="<%= collective %>.reply.>" write="servers" admin="servers" />
-                  <authorizationEntry topic="<%= collective %>.*.agent" read="servers" admin="servers" />
-                  <authorizationEntry topic="<%= collective %>.registration.agent" write="servers" read="servers" admin="servers" />
+                  <authorizationEntry queue="<%= collective %>.>" write="admins,<%= collective %>-admins" read="admins,<%= collective %>-admins" admin="admins,<%= collective %>-admins" />
+                  <authorizationEntry topic="<%= collective %>.>" write="admins,<%= collective %>-admins" read="admins,<%= collective %>-admins" admin="admins,<%= collective %>-admins" />
+                  <authorizationEntry queue="<%= collective %>.nodes.>" read="servers,<%= collective %>-servers" admin="servers,<%= collective %>-servers" />
+                  <authorizationEntry queue="<%= collective %>.reply.>" write="servers,<%= collective %>-servers" admin="servers,<%= collective %>-servers" />
+                  <authorizationEntry topic="<%= collective %>.*.agent" read="servers,<%= collective %>-servers" admin="servers,<%= collective %>-servers" />
+                  <authorizationEntry topic="<%= collective %>.registration.agent" write="servers,<%= collective %>-servers" read="servers,<%= collective %>-servers" admin="servers,<%= collective %>-servers" />
                   <%- end -%>
 
                   <!--
