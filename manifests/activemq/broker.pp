@@ -6,7 +6,7 @@ class mcollective_helper::activemq::broker (
   # I don't actually know the significance of this, but we go ahead and use it wherever we need a unique keey.
   $brokername = 'mcollective-broker',
   # Whether to encrypt connections.
-  $tls = false,
+  $tls = true,
   # What kind of authentication to use. We recommend 'properties'. Can be 'certificate' | 'properties' | 'simple'
   $authentication = 'properties',
   # The names of the collectives you're using.
@@ -46,9 +46,11 @@ class mcollective_helper::activemq::broker (
 
   # Clean the peers to allow for easier singleton peers in hiera data:
   $peers_real = flatten([$peers])
+  # Clean $tls to work around widespread Hiera bug
+  $tls_real = str2bool("$tls")
 
   # Set up keystores if necessary
-  if $tls {
+  if $tls_real {
     # Validation and sanity-checks
     if $keystore_password == 'UNSET' or $cert == 'UNSET' or $private_key == 'UNSET' { fail("If ActiveMQ TLS is turned on, the following parameters must be set: ${title}::keystore_password, ${title}::cert, ${title}::private_key, and optionally ${title}::ca.") }
     class {'mcollective_helper::activemq::keystores':

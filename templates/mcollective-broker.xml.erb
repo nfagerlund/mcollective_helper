@@ -58,7 +58,7 @@
           <%- @peers_real.each do |peer| -%>
           <networkConnector
             name="<%= @brokername %>-<%= peer['hostname'] %>-topics"
-            uri="static:(<%= @tls ? 'ssl' : 'tcp' %>://<%= peer['hostname'] %>:<%= @tls ? '61617' : '61616' %>)"
+            uri="static:(<%= @tls_real ? 'ssl' : 'tcp' %>://<%= peer['hostname'] %>:<%= @tls_real ? '61617' : '61616' %>)"
             userName="<%= peer['user'] %>"
             password="<%= peer['password'] %>"
             duplex="true"
@@ -71,7 +71,7 @@
           </networkConnector>
           <networkConnector
             name="<%= @brokername %>-<%= peer %>-queues"
-            uri="static:(<%= @tls ? 'ssl' : 'tcp' %>://<%= peer['hostname'] %>:<%= @tls ? '61617' : '61616' %>)"
+            uri="static:(<%= @tls_real ? 'ssl' : 'tcp' %>://<%= peer['hostname'] %>:<%= @tls_real ? '61617' : '61616' %>)"
             userName="<%= peer['user'] %>"
             password="<%= peer['password'] %>"
             duplex="true"
@@ -190,7 +190,7 @@
           </authorizationPlugin>
         </plugins>
 
-        <%- if @tls -%>
+        <%- if @tls_real -%>
         <!-- Keystore and credentials for SSL. -->
         <sslContext>
           <sslContext
@@ -227,7 +227,7 @@
           http://activemq.apache.org/configuring-transports.html 
         -->
         <transportConnectors>
-            <%- if @tls -%>
+            <%- if @tls_real -%>
             <transportConnector name="stomp+ssl" uri="stomp+ssl://0.0.0.0:61614?needClientAuth=true"/>
             <transportConnector name="openwire+ssl" uri="ssl://0.0.0.0:61617?needClientAuth=true"/>
             <%- else -%>
