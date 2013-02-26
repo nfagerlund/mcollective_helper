@@ -1,0 +1,17 @@
+<%# make groups hash:
+    {group => [user, user, user],
+     group => [user, user, user]}
+  Always add all users to the "everyone" group.
+-%>
+<% all_groups = {}
+@users.each do |user|
+  user['groups'].each do |group|
+    all_groups[group] ||= []
+    all_groups[group] << user['name']
+  end
+  all_groups['everyone'] ||= []
+  all_groups['everyone'] << user['name']
+end -%>
+<% all_groups.each do |groupname, users| -%>
+<%= groupname %>=<%= users.uniq.join(',') %>
+<% end -%>

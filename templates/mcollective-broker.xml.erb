@@ -1,0 +1,241 @@
+<beans
+  xmlns="http://www.springframework.org/schema/beans"
+  xmlns:amq="http://activemq.apache.org/schema/core"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-2.0.xsd
+    http://activemq.apache.org/schema/core http://activemq.apache.org/schema/core/activemq-core.xsd 
+    http://activemq.apache.org/camel/schema/spring http://activemq.apache.org/camel/schema/spring/camel-spring.xsd">
+
+    <broker xmlns="http://activemq.apache.org/schema/core" brokerName="<%= @brokername %>" dataDirectory="${activemq.base}/data" destroyApplicationContextOnStop="true">
+ 
+        <!--
+          WARNING: The elements that are direct children of <broker> MUST BE IN
+          ALPHABETICAL ORDER. This is fixed in ActiveMQ 5.6.0, but affects
+          previous versions back to 5.4.
+          https://issues.apache.org/jira/browse/AMQ-3570
+        -->
+        <!--
+          For better performances use VM cursor and small memory limit.
+          For more information, see:
+            
+          http://activemq.apache.org/message-cursors.html
+            
+          Also, if your producer is "hanging", it's probably due to producer 
+          flow control.
+
+          For more information, see:
+          http://activemq.apache.org/producer-flow-control.html
+        -->
+              
+        <destinationPolicy>
+            <policyMap>
+              <policyEntries>
+                <policyEntry topic=">" producerFlowControl="false"/>
+                <policyEntry queue="*.reply.>" gcInactiveDestinations="true" inactiveTimoutBeforeGC="300000" />
+              </policyEntries>
+            </policyMap>
+        </destinationPolicy> 
+
+        <!-- 
+          The managementContext is used to configure how ActiveMQ is exposed in 
+          JMX. By default, ActiveMQ uses the MBean server that is started by 
+          the JVM. For more information, see: 
+            
+          http://activemq.apache.org/jmx.html 
+        -->
+        <managementContext>
+            <managementContext createConnector="false"/>
+        </managementContext>
+
+        <%- unless @peers_real.empty? -%>
+        <!-- 
+          Configure network connectors for a network of brokers. The
+          MCollective ActiveMQ connector uses TWO bi-directional
+          connectors per link, because the short-lived reply queues
+          require conduitSubscriptions be set to false.
+        -->
+        <networkConnectors>
+          <%- @peers_real.each do |peer| -%>
+          <networkConnector
+            name="<%= @brokername %>-<%= peer['hostname'] %>-topics"
+            uri="static:(<%= @tls ? 'ssl' : 'tcp' %>://<%= peer['hostname'] %>:<%= @tls ? '61617' : '61616' %>)"
+            userName="<%= peer['user'] %>"
+            password="<%= peer['password'] %>"
+            duplex="true"
+            decreaseNetworkConsumerPriority="true"
+            networkTTL="2"
+            dynamicOnly="true">
+            <excludedDestinations>
+              <queue physicalName=">" />
+            </excludedDestinations>
+          </networkConnector>
+          <networkConnector
+            name="<%= @brokername %>-<%= peer %>-queues"
+            uri="static:(<%= @tls ? 'ssl' : 'tcp' %>://<%= peer['hostname'] %>:<%= @tls ? '61617' : '61616' %>)"
+            userName="<%= peer['user'] %>"
+            password="<%= peer['password'] %>"
+            duplex="true"
+            decreaseNetworkConsumerPriority="true"
+            networkTTL="2"
+            dynamicOnly="true"
+            conduitSubscriptions="false">
+            <excludedDestinations>
+              <topic physicalName=">" />
+            </excludedDestinations>
+          </networkConnector>
+          <%- end -%>
+        </networkConnectors>
+        <%- end -%>
+
+        <!--
+          Configure message persistence for the broker. The default persistence
+          mechanism is the KahaDB store (identified by the kahaDB tag). 
+          For more information, see: 
+            
+          http://activemq.apache.org/persistence.html 
+        -->
+        <persistenceAdapter>
+            <kahaDB directory="${activemq.base}/data/kahadb"/>
+        </persistenceAdapter>
+        
+        <plugins>
+          <!--
+            Enable the statisticsBrokerPlugin to allow ActiveMQ to collect
+            statistics.
+          -->
+          <statisticsBrokerPlugin/>
+
+          <!--
+            This configures the users and groups used by this broker. Groups
+            are referenced below, in the write/read/admin attributes
+            of each authorizationEntry element. 
+
+            - The simpleAuthenticationPlugin defines users, passwords,
+              and groups directly in this xml file. You must restart the
+              broker to add new users or groups.
+            - The jaasAuthenticationPlugin defines users, passwords, and
+              groups in a pair of external files. You can add new users
+              and groups at will without restarting the broker.
+            - The jaasCertificateAuthenticationPlugin requires TLS w/
+              host verification to be turned on. It matches users to
+              certificate DNs, and then assigns users to groups; this info
+              is stored in a pair of external files. Note that if every
+              server is connecting with its own certificate, you need to
+              know the DN of EVERY CERTIFICATE. This means it is
+              generally only feasible if your servers are sharing a
+              single certificate.
+
+            Everything but simple auth requires a 'configuration'
+            attribute, whose value should be the name of a config block
+            in ${activemq.base}/conf/login.config. See
+            http://fusesource.com/docs/broker/5.5/security/Auth-JAAS-
+            Intro.html for more information about how these all work.
+          -->
+          <%- if @authentication == 'simple' -%>
+          <simpleAuthenticationPlugin>
+            <users>
+              <%- @users.each do |user| -%>
+              <authenticationUser username="<%= user['name'] %>" password="<%= user['password'] %>" groups="<%= user['groups'].join(',') %>,everyone"/>
+              <%- end -%>
+            </users>
+          </simpleAuthenticationPlugin>
+          <%- elsif @authentication == 'certificate' -%>
+          <jaasCertificateAuthenticationPlugin configuration="MCollectiveCertLogin" />
+          <%- elsif @authentication == 'properties' -%>
+          <jaasAuthenticationPlugin configuration="MCollectivePropertiesLogin" />
+          <%- else -%>
+          <%- end -%>
+
+          <!--
+            Configure which users are allowed to read and write where. We expect:
+
+            * The MCollective server user(s) belong to the group "servers"
+            * Admin users who may issue MCollective commands belong to the group "admins"
+            * All admin users are equal on the middleware level, and additional restrictions
+              on who may issue commands to which machines should be handled by
+              MCollective's security plugin and the optional actionpolicy plugin.
+          -->
+          <authorizationPlugin>
+            <map>
+              <authorizationMap>
+                <authorizationEntries>
+                  <!-- Admins can do more or less anything. You may wish to
+                    change this and make a class of "super-admin" users.
+                  -->
+                  <authorizationEntry queue=">" write="admins" read="admins" admin="admins" />
+                  <authorizationEntry topic=">" write="admins" read="admins" admin="admins" />
+
+                  <!-- Permissions:
+                    * Admin users may issue commands, but servers may not.
+                    * ...With the exception of registration commands, which servers may issue.
+                    * Servers may send replies.
+                  -->
+                  <%- @collectives.each do |collective| -%>
+                  <authorizationEntry queue="<%= collective %>.>" write="admins" read="admins" admin="admins" />
+                  <authorizationEntry topic="<%= collective %>.>" write="admins" read="admins" admin="admins" />
+                  <authorizationEntry queue="<%= collective %>.nodes.>" read="servers" admin="servers" />
+                  <authorizationEntry queue="<%= collective %>.reply.>" write="servers" admin="servers" />
+                  <authorizationEntry topic="<%= collective %>.*.agent" read="servers" admin="servers" />
+                  <authorizationEntry topic="<%= collective %>.registration.agent" write="servers" read="servers" admin="servers" />
+                  <%- end -%>
+
+                  <!--
+                    The advisory topic is part of ActiveMQ, and all users need all access to it.
+                    The "everyone" group is not special; you need to ensure every user is a member of it.
+                  -->
+                  <authorizationEntry topic="ActiveMQ.Advisory.>" read="everyone" write="everyone" admin="everyone"/>
+                </authorizationEntries>
+              </authorizationMap>
+            </map>
+          </authorizationPlugin>
+        </plugins>
+
+        <%- if @tls -%>
+        <!-- Keystore and credentials for SSL. -->
+        <sslContext>
+          <sslContext
+            keyStore="<%= @brokername %>.ks" keyStorePassword="<%= @keystore_password %>"
+            trustStore="<%= @brokername %>.ts" trustStorePassword="<%= @keystore_password %>"
+          />
+        </sslContext>
+        <%- end -%>
+
+        <!--
+          The systemUsage controls the maximum amount of space the broker will 
+          use before slowing down producers. For more information, see:
+          
+          http://activemq.apache.org/producer-flow-control.html
+        -->
+        <systemUsage>
+            <systemUsage>
+                <memoryUsage>
+                    <memoryUsage limit="20 mb"/>
+                </memoryUsage>
+                <storeUsage>
+                    <storeUsage limit="1 gb"/>
+                </storeUsage>
+                <tempUsage>
+                    <tempUsage limit="100 mb"/>
+                </tempUsage>
+            </systemUsage>
+        </systemUsage>
+		  
+        <!-- 
+          The transport connectors expose ActiveMQ over a given protocol to
+          clients and other brokers. For more information, see: 
+            
+          http://activemq.apache.org/configuring-transports.html 
+        -->
+        <transportConnectors>
+            <%- if @tls -%>
+            <transportConnector name="stomp+ssl" uri="stomp+ssl://0.0.0.0:61614?needClientAuth=true"/>
+            <transportConnector name="openwire+ssl" uri="ssl://0.0.0.0:61617?needClientAuth=true"/>
+            <%- else -%>
+            <transportConnector name="stomp+nio" uri="stomp+nio://0.0.0.0:61613"/>
+            <transportConnector name="openwire" uri="tcp://0.0.0.0:61616"/>
+            <%- end -%>
+        </transportConnectors>
+
+    </broker>
+
+</beans>
