@@ -173,7 +173,7 @@
                   <%- @collectives.each do |collective| -%>
                   <authorizationEntry queue="<%= collective %>.>" write="admins,<%= collective %>-admins" read="admins,<%= collective %>-admins" admin="admins,<%= collective %>-admins" />
                   <authorizationEntry topic="<%= collective %>.>" write="admins,<%= collective %>-admins" read="admins,<%= collective %>-admins" admin="admins,<%= collective %>-admins" />
-                  <authorizationEntry queue="<%= collective %>.nodes.>" read="servers,<%= collective %>-servers" admin="servers,<%= collective %>-servers" />
+                  <authorizationEntry queue="<%= collective %>.nodes" read="servers,<%= collective %>-servers" admin="servers,<%= collective %>-servers" />
                   <authorizationEntry queue="<%= collective %>.reply.>" write="servers,<%= collective %>-servers" admin="servers,<%= collective %>-servers" />
                   <authorizationEntry topic="<%= collective %>.*.agent" read="servers,<%= collective %>-servers" admin="servers,<%= collective %>-servers" />
                   <authorizationEntry topic="<%= collective %>.registration.agent" write="servers,<%= collective %>-servers" read="servers,<%= collective %>-servers" admin="servers,<%= collective %>-servers" />
