@@ -70,7 +70,6 @@ for ActiveMQ's use.
     private_key  => "${activemq_confdir}/ssl_credentials/activemq_private.pem",
     target       => "${activemq_confdir}/${brokername}.ks",
     password     => $keystore_password,
-    trustcacerts => true,
     require      => [
       File["${activemq_confdir}/ssl_credentials/activemq_private.pem"],
       File["${activemq_confdir}/ssl_credentials/activemq_certificate.pem"]
