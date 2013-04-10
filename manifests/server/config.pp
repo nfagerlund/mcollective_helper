@@ -73,8 +73,13 @@ class mcollective_helper::server::config (
   else { $ssl_server_public_real = $ssl_server_public }
   
   if $ssl_client_cert_dir =~ /\Apuppet:/ {
-    $ssl_client_cert_dir_real = "${credentials_dir}/ssl_client_cert_dir.pem"
-    file {$ssl_client_cert_dir_real: source => $ssl_client_cert_dir, }
+    $ssl_client_cert_dir_real = "${credentials_dir}/clients"
+    file {$ssl_client_cert_dir_real:
+      ensure => directory,
+      recurse => true,
+      purge => true,
+      source => $ssl_client_cert_dir,
+    }
   }
   else { $ssl_client_cert_dir_real = $ssl_client_cert_dir }
 
