@@ -6,27 +6,29 @@
     http://activemq.apache.org/schema/core http://activemq.apache.org/schema/core/activemq-core.xsd 
     http://activemq.apache.org/camel/schema/spring http://activemq.apache.org/camel/schema/spring/camel-spring.xsd">
 
+    <!--
+      For more information about what MCollective requires in this file,
+      see http://docs.puppetlabs.com/mcollective/deploy/middleware/activemq.html
+    -->
+    <!--
+      WARNING: The elements that are direct children of <broker> MUST BE IN
+      ALPHABETICAL ORDER. This is fixed in ActiveMQ 5.6.0, but affects
+      previous versions back to 5.4.
+      https://issues.apache.org/jira/browse/AMQ-3570
+    -->
+
+    <!-- In a network of brokers, the brokerName attribute must be unique. -->
     <broker xmlns="http://activemq.apache.org/schema/core" brokerName="<%= @brokername %>" dataDirectory="${activemq.base}/data" destroyApplicationContextOnStop="true">
  
         <!--
-          WARNING: The elements that are direct children of <broker> MUST BE IN
-          ALPHABETICAL ORDER. This is fixed in ActiveMQ 5.6.0, but affects
-          previous versions back to 5.4.
-          https://issues.apache.org/jira/browse/AMQ-3570
-        -->
-        <!--
-          For better performances use VM cursor and small memory limit.
-          For more information, see:
-            
-          http://activemq.apache.org/message-cursors.html
-            
-          Also, if your producer is "hanging", it's probably due to producer 
-          flow control.
+          MCollective generally expects producer flow control to be turned off.
+          It will also generate a limitless number of single-use reply queues,
+          which should be garbage-collected after about five minutes to conserve
+          memory.
 
           For more information, see:
           http://activemq.apache.org/producer-flow-control.html
         -->
-              
         <destinationPolicy>
             <policyMap>
               <policyEntries>
@@ -88,9 +90,12 @@
         <%- end -%>
 
         <!--
-          Configure message persistence for the broker. The default persistence
-          mechanism is the KahaDB store (identified by the kahaDB tag). 
-          For more information, see: 
+          Configure message persistence for the broker. MCollective only
+          requires this in a network of brokers, where it's used to prevent
+          duplicate messages.
+
+          The default persistence mechanism is the KahaDB store (identified by
+          the kahaDB tag). For more information, see: 
             
           http://activemq.apache.org/persistence.html 
         -->
@@ -180,8 +185,8 @@
                   <%- end -%>
 
                   <!--
-                    The advisory topic is part of ActiveMQ, and all users need all access to it.
-                    The "everyone" group is not special; you need to ensure every user is a member of it.
+                    The advisory topics are part of ActiveMQ, and all users need access to them.
+                    The "everyone" group is not special; you need to ensure every user is a member.
                   -->
                   <authorizationEntry topic="ActiveMQ.Advisory.>" read="everyone" write="everyone" admin="everyone"/>
                 </authorizationEntries>
@@ -202,9 +207,26 @@
 
         <!--
           The systemUsage controls the maximum amount of space the broker will 
-          use before slowing down producers. For more information, see:
+          use for messages.
+
+          - memoryUsage is the amount of memory ActiveMQ will take up with
+            *actual messages;* it doesn't include things like thread management.
+          - tempUsage is the amount of disk space it will use for stashing
+            non-persisted messages if the memoryUsage is exceeded (e.g. in the
+            event of a sudden flood of messages).
+          - storeUsage is the amount of disk space dedicated to persistent
+            messages (which MCollective doesn't use directly, but which may be
+            used in networks of brokers to avoid duplicates).           
+
+          If producer flow control is on, ActiveMQ will slow down producers
+          when any limits are reached; otherwise, it will use up the
+          memoryUsage, overflow into tempUsage (assuming the default cursor
+          settings aren't changed), and start failing message deliveries after
+          tempUsage is spent. In MCollective, the latter behavior is generally
+          preferable. For more information, see:
           
           http://activemq.apache.org/producer-flow-control.html
+          http://activemq.apache.org/javalangoutofmemory.html
         -->
         <systemUsage>
             <systemUsage>
@@ -221,10 +243,12 @@
         </systemUsage>
 		  
         <!-- 
-          The transport connectors expose ActiveMQ over a given protocol to
-          clients and other brokers. For more information, see: 
-            
-          http://activemq.apache.org/configuring-transports.html 
+          The transport connectors allow ActiveMQ to listen for connections over
+          a given protocol. MCollective uses Stomp, and other ActiveMQ brokers
+          use OpenWire. You'll need different URLs depending on whether you are
+          using TLS. For more information, see:
+
+          http://docs.puppetlabs.com/mcollective/deploy/middleware/activemq.html#transport-connectors
         -->
         <transportConnectors>
             <%- if @tls_real -%>
