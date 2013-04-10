@@ -1,5 +1,5 @@
 # Still only doing a single activemq server.
-class mcollective_helper::server::config inherits mcollective_helper ( # Inheriting for params
+class mcollective_helper::server::config (
   $activemq_server,
   $ca = "${puppet_ssldir}/certs/ca.pem", # default to re-using Puppet cert infrastructure for middleware connection...
   $cert = "${puppet_ssldir}/certs/${::clientcert}.pem", # ...but OK to use local path or puppet:/// URL.
@@ -14,7 +14,7 @@ class mcollective_helper::server::config inherits mcollective_helper ( # Inherit
   $activemq_tls = true, # sloppy bool: accepts real bools, string bools, and 0/1.
   $mcollectived_user = 'root', # In case mcollective isn't running as root.
   $mcollective_confdir = '/etc/mcollective', # shouldn't need to change this
-) {
+) inherits mcollective_helper { # Inheriting for params
 
   # munge parameters
   $collectives_real = unique( flatten( [$collectives, $main_collective] ) ) # Make sure $main_collective is included.
